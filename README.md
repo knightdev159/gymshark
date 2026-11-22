@@ -2,7 +2,8 @@
 
 A Go HTTP API (with a small web UI) that works out which whole packs to ship for an order.
 
-**Live demo:** _add your deployed URL here_
+**Live demo:** https://pack-calculator-5koj.onrender.com
+(free hosting: the first request after a period of inactivity can take up to a minute while the instance wakes up)
 
 ## The rules
 
