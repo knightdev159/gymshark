@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pack Calculator</title>
+<meta name="description" content="Calculate the fewest whole packs needed to fulfil an order.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='8' width='24' height='18' rx='3' fill='%23111'/%3E%3Cpath d='M4 13h24' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f5f5f4;
+    --surface: #ffffff;
+    --surface-2: #f0f0ef;
+    --text: #18181b;
+    --muted: #6b6b70;
+    --border: #e4e4e2;
+    --accent: #18181b;
+    --accent-text: #ffffff;
+    --good: #15803d;
+    --good-bg: #dcfce7;
+    --bad: #b91c1c;
+    --bad-bg: #fee2e2;
+    --bar: #3f3f46;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0c0d;
+      --surface: #161618;
+      --surface-2: #1f1f22;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --border: #2a2a2e;
+      --accent: #f4f4f5;
+      --accent-text: #0c0c0d;
+      --good: #4ade80;
+      --good-bg: #052e16;
+      --bad: #f87171;
+      --bad-bg: #450a0a;
+      --bar: #d4d4d8;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 6px; font-weight: 800; text-transform: uppercase; }
+  h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-weight: 700; }
+  .lede { color: var(--muted); margin: 0; max-width: 62ch; }
+  .rules { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding: 0; list-style: none; }
+  .rules li { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
+  .rules b { color: var(--text); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); min-width: 0; }
+  .card.full { grid-column: 1 / -1; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 5px 6px 5px 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .chip button { border: 0; background: transparent; color: var(--muted); cursor: pointer; width: 22px; height: 22px; border-radius: 50%; font-size: 16px; line-height: 1; display: grid; place-items: center; }
+  .chip button:hover { background: var(--border); color: var(--text); }
+  .empty { color: var(--muted); font-size: 14px; align-self: center; }
+
+  .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  input[type=number], input[type=text] {
+    flex: 1 1 140px; min-width: 0; font: inherit; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; outline: none;
+  }
+  input:focus { border-color: var(--text); }
+  input.big { font-size: 22px; font-weight: 700; padding: 12px 14px; font-variant-numeric: tabular-nums; }
+  button.btn {
+    font: inherit; font-weight: 700; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); white-space: nowrap;
+  }
+  button.btn.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  button.btn.secondary:hover { border-color: var(--text); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  .link { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
+  .link:hover { color: var(--text); }
+
+  .hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; color: var(--muted); align-items: center; }
+  .dirty { display: none; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--bad); }
+  .dirty.on { display: inline; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  @media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .stat .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .stat.good .v { color: var(--good); }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  td.barcell { width: 38%; }
+  .bar { height: 8px; border-radius: 4px; background: var(--bar); min-width: 3px; }
+  .pack-label { font-weight: 700; }
+
+  .placeholder { color: var(--muted); padding: 24px 0; text-align: center; }
+  .explain { margin-top: 14px; font-size: 14px; color: var(--muted); }
+
+  pre { margin: 0; background: var(--surface-2); border-radius: 10px; padding: 14px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; transition: all .2s ease;
+    padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; pointer-events: none; max-width: calc(100% - 32px); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--good-bg); color: var(--good); }
+  .toast.err { background: var(--bad-bg); color: var(--bad); }
+  footer { margin-top: 28px; text-align: center; font-size: 13px; color: var(--muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Pack Calculator</h1>
+    <p class="lede">Work out which whole packs to ship so an order is fulfilled with the fewest items possible, then the fewest packs.</p>
+    <ul class="rules">
+      <li><b>1</b> Whole packs only</li>
+      <li><b>2</b> Fewest items over the order</li>
+      <li><b>3</b> Then fewest packs</li>
+    </ul>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="packs-h">
+      <h2 id="packs-h" style="display:flex;align-items:center">Pack sizes <span class="dirty" id="dirty">Unsaved changes</span></h2>
+      <div class="chips" id="chips" aria-live="polite"></div>
+      <form class="row" id="add-form">
+        <label for="new-size" class="sr-only">New pack size</label>
+        <input type="number" id="new-size" min="1" max="1000000" step="1" placeholder="Add a pack size, e.g. 750" inputmode="numeric">
+        <button class="btn secondary" type="submit">Add</button>
+        <button class="btn" type="button" id="save" disabled>Save</button>
+      </form>
+      <div class="presets">
+        Presets:
+        <button class="link" type="button" data-preset="250,500,1000,2000,5000">Default (250 – 5000)</button>
+        <button class="link" type="button" data-preset="23,31,53">Edge case (23, 31, 53)</button>
+      </div>
+      <p class="hint">Changes are saved on the server and used for every calculation.</p>
+    </section>
+
+    <section class="card" aria-labelledby="order-h">
+      <h2 id="order-h">Order</h2>
+      <form id="calc-form">
+        <label for="items" class="sr-only">Items ordered</label>
+        <div class="row" style="margin-top:0">
+          <input class="big" type="number" id="items" min="0" step="1" placeholder="Items ordered" inputmode="numeric" required>
+          <button class="btn" type="submit" id="calc">Calculate</button>
+        </div>
+      </form>
+      <div class="presets" id="examples">
+        Try:
+        <button class="link" type="button" data-items="1">1</button>
+        <button class="link" type="button" data-items="250">250</button>
+        <button class="link" type="button" data-items="251">251</button>
+        <button class="link" type="button" data-items="501">501</button>
+        <button class="link" type="button" data-items="12001">12,001</button>
+        <button class="link" type="button" data-items="500000">500,000</button>
+      </div>
+    </section>
+
+    <section class="card full" aria-labelledby="result-h" aria-live="polite">
+      <h2 id="result-h">Result</h2>
+      <div id="result"><div class="placeholder">Enter an order quantity to see which packs to send.</div></div>
+    </section>
+
+    <section class="card full" aria-labelledby="api-h">
+      <h2 id="api-h">Use the API</h2>
+      <pre><code id="api-examples"></code></pre>
+    </section>
+  </div>
+
+  <footer>Go HTTP API · <a href="/api/v1/packs" style="color:inherit">/api/v1/packs</a> · <a href="/healthz" style="color:inherit">/healthz</a></footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n).toLocaleString("en-GB");
+
+  let saved = [];   // sizes stored on the server
+  let draft = [];   // sizes being edited
+
+  async function api(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  }
+
+  let toastTimer;
+  function toast(msg, kind = "ok") {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = `toast show ${kind}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.className = "toast"), 2600);
+  }
+
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const norm = (arr) => [...new Set(arr)].sort((a, b) => a - b);
+
+  function renderChips() {
+    const chips = $("chips");
+    chips.replaceChildren();
+    if (draft.length === 0) {
+      const e = document.createElement("span");
+      e.className = "empty";
+      e.textContent = "No pack sizes — add at least one.";
+      chips.append(e);
+    }
+    for (const size of draft) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = fmt(size);
+      const x = document.createElement("button");
+      x.type = "button";
+      x.textContent = "×";
+      x.setAttribute("aria-label", `Remove pack size ${size}`);
+      x.onclick = () => { draft = draft.filter((s) => s !== size); renderChips(); };
+      chip.append(x);
+      chips.append(chip);
+    }
+    const dirty = !same(draft, saved);
+    $("dirty").classList.toggle("on", dirty);
+    $("save").disabled = !dirty || draft.length === 0;
+  }
+
+  async function loadPacks() {
+    try {
+      const data = await api("GET", "/api/v1/packs");
+      saved = data.packSizes;
+      draft = [...saved];
+      renderChips();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  }
+
+  async function savePacks(sizes) {
+    try {
+      const data = await api("PUT", "/api/v1/packs", { packSizes: sizes });
+      saved = data.packSizes;
+      draft = [...saved];
+      renderChips();
+      toast("Pack sizes saved");
+      if ($("items").value !== "") calculate();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  }
+
+  $("add-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const input = $("new-size");
+    const n = Number(input.value);
+    if (!Number.isInteger(n) || n < 1) {
+      toast("Pack size must be a whole number greater than 0", "err");
+      return;
+    }
+    if (draft.includes(n)) {
+      toast(`${fmt(n)} is already a pack size`, "err");
+      return;
+    }
+    draft = norm([...draft, n]);
+    input.value = "";
+    renderChips();
+    input.focus();
+  });
+
+  $("save").addEventListener("click", () => savePacks(draft));
+
+  document.querySelectorAll("[data-preset]").forEach((b) =>
+    b.addEventListener("click", () => savePacks(b.dataset.preset.split(",").map(Number)))
+  );
+
+  document.querySelectorAll("[data-items]").forEach((b) =>
+    b.addEventListener("click", () => { $("items").value = b.dataset.items; calculate(); })
+  );
+
+  $("calc-form").addEventListener("submit", (ev) => { ev.preventDefault(); calculate(); });
+
+  async function calculate() {
+    const raw = $("items").value.trim();
+    const items = Number(raw);
+    if (raw === "" || !Number.isSafeInteger(items) || items < 0) {
+      toast("Enter a whole number of items (0 or more)", "err");
+      return;
+    }
+    if (!same(draft, saved)) toast("Using saved pack sizes — save your changes to use them", "err");
+    $("calc").disabled = true;
+    try {
+      renderResult(await api("POST", "/api/v1/calculate", { items }));
+    } catch (e) {
+      $("result").replaceChildren(el("div", "placeholder", e.message));
+    } finally {
+      $("calc").disabled = false;
+    }
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function renderResult(r) {
+    const out = $("result");
+    out.replaceChildren();
+
+    const stats = el("div", "stats");
+    const stat = (k, v, cls = "") => {
+      const s = el("div", `stat ${cls}`);
+      s.append(el("div", "k", k), el("div", "v", v));
+      stats.append(s);
+    };
+    stat("Ordered", fmt(r.itemsOrdered));
+    stat("Shipped", fmt(r.totalItems));
+    stat("Surplus", fmt(r.surplus), r.surplus === 0 ? "good" : "");
+    stat("Packs", fmt(r.totalPacks));
+    out.append(stats);
+
+    if (r.packs.length === 0) {
+      out.append(el("div", "placeholder", "Nothing to ship for an order of 0 items."));
+      return;
+    }
+
+    const table = el("table");
+    const head = el("tr");
+    head.append(el("th", "", "Pack size"), el("th", "num", "Quantity"), el("th", "num", "Items"), el("th", "", ""));
+    const thead = el("thead"); thead.append(head);
+    const tbody = el("tbody");
+    const maxItems = Math.max(...r.packs.map((p) => p.size * p.quantity));
+    for (const p of r.packs) {
+      const tr = el("tr");
+      const label = el("td");
+      label.append(el("span", "pack-label", `${fmt(p.size)}`), document.createTextNode(" items"));
+      const barCell = el("td", "barcell");
+      const bar = el("div", "bar");
+      bar.style.width = `${Math.max(1, (p.size * p.quantity / maxItems) * 100)}%`;
+      barCell.append(bar);
+      tr.append(label, el("td", "num", `× ${fmt(p.quantity)}`), el("td", "num", fmt(p.size * p.quantity)), barCell);
+      tbody.append(tr);
+    }
+    table.append(thead, tbody);
+    out.append(table);
+
+    const why = r.surplus === 0
+      ? `These pack sizes make exactly ${fmt(r.itemsOrdered)} items, using the fewest packs possible (${fmt(r.totalPacks)}).`
+      : `No combination of pack sizes [${r.packSizes.map(fmt).join(", ")}] makes between ${fmt(r.itemsOrdered)} and ${fmt(r.totalItems - 1)} items, so ${fmt(r.totalItems)} is the smallest amount that can be sent; ${fmt(r.totalPacks)} is the fewest packs that make it.`;
+    out.append(el("p", "explain", why));
+  }
+
+  const origin = location.origin;
+  $("api-examples").textContent =
+`# Calculate packs for an order
+curl -X POST ${origin}/api/v1/calculate -H "Content-Type: application/json" -d '{"items": 12001}'
+
+# Same, as a GET request
+curl "${origin}/api/v1/calculate?items=12001"
+
+# One-off calculation with custom pack sizes (does not change the saved sizes)
+curl -X POST ${origin}/api/v1/calculate -H "Content-Type: application/json" -d '{"items": 500000, "packSizes": [23, 31, 53]}'
+
+# Read / replace the saved pack sizes
+curl ${origin}/api/v1/packs
+curl -X PUT ${origin}/api/v1/packs -H "Content-Type: application/json" -d '{"packSizes": [250, 500, 1000, 2000, 5000]}'`;
+
+  loadPacks();
+})();
+</script>
+</body>
+</html>

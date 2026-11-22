@@ -1,0 +1,16 @@
+# Build output
+bin/
+*.exe
+coverage.out
+
+# Local pack-size persistence
+data/
+
+# Challenge brief (not part of the solution)
+*.docx
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

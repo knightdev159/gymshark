@@ -1,0 +1,12 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# New > Blueprint > select this repository, and Render builds the Dockerfile.
+services:
+  - type: web
+    name: pack-calculator
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PACK_SIZES
+        value: 250,500,1000,2000,5000

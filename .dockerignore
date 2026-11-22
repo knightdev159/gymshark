@@ -1,0 +1,6 @@
+.git
+.github
+*.docx
+*.md
+bin/
+data/
